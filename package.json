@@ -1,0 +1,13 @@
+{
+  "name": "ugmaster-bot",
+  "version": "1.0.0",
+  "description": "Telegram бот Юг Мастер — строительство в Волгограде",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "@anthropic-ai/sdk": "^0.39.0"
+  }
+}
