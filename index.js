@@ -7,14 +7,18 @@ const LOGO_URL = "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main
 // Фотографии по разделам
 const PHOTOS = {
   сварочные: [
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-lestnica.jpg",
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-lift.jpg",
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-naves.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/svarka-lestnica.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/svarka-lift.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/svarka-naves.jpg",
   ],
-  бетонные: [],
+  бетонные: [
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/14961_15826480751.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/2%20(2).jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/2dtggvkn92wbznsxexxpvnuw356jz3mk.jpg",
+  ],
   фасады: [],
   здания: [
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/zdaniya-pyaterochka.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-pyaterochka.jpg",
   ],
   заборы: [],
 };
