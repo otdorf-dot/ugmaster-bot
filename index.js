@@ -2,35 +2,21 @@ const TelegramBot = require("node-telegram-bot-api");
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
 // Логотип компании (хранится в этом же репозитории на GitHub)
-const LOGO_URL = "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/logo.jpg";
+const LOGO_URL = "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/%D0%BB%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF.jpg";
 
 // Фотографии по разделам
 const PHOTOS = {
   сварочные: [
-    "https://static.tildacdn.com/tild3538-6239-4731-a439-343935393330/photo.png",
-    "https://thb.tildacdn.com/tild3338-3837-4366-b835-316434346433/-/empty/33.jpg",
-    "https://thb.tildacdn.com/tild3662-3732-4866-a437-313739373162/-/empty/WhatsApp_Image_2024-.jpeg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-lestnica.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-lift.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/svarka-naves.jpg",
   ],
-  бетонные: [
-    "https://static.tildacdn.com/tild6561-3663-4334-b065-383636323638/avtobetonosmesitel-1.jpg",
-    "https://thb.tildacdn.com/tild6264-6337-4062-a434-333834356131/-/empty/_.jpg",
-    "https://thb.tildacdn.com/tild3861-3932-4838-b465-633666353366/-/empty/betonnye-poly-min.jpg",
-  ],
-  фасады: [
-    "https://static.tildacdn.com/tild3462-6366-4161-a630-373832353565/3.jpg",
-    "https://thb.tildacdn.com/tild3165-3637-4661-b431-323837613539/-/empty/photo.jpg",
-    "https://static.tildacdn.com/tild6232-3234-4134-a137-303532666565/2.jpg",
-  ],
+  бетонные: [],
+  фасады: [],
   здания: [
-    "https://static.tildacdn.com/tild6232-3234-4134-a137-303532666565/2.jpg",
-    "https://static.tildacdn.com/tild3538-6239-4731-a439-343935393330/photo.png",
-    "https://static.tildacdn.com/tild3137-3632-4433-b633-336464363439/-/empty/_.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/photos/zdaniya-pyaterochka.jpg",
   ],
-  заборы: [
-    "https://static.tildacdn.com/tild3533-6162-4938-b931-666439616135/__.png",
-    "https://thb.tildacdn.com/tild3233-6561-4435-b231-333364353263/-/empty/photo_2025-09-30_22-.jpg",
-    "https://static.tildacdn.com/tild6562-3362-4761-b036-373761653165/2_02.jpg",
-  ],
+  заборы: [],
 };
 
 // Ответы по разделам
@@ -149,7 +135,11 @@ function mainKeyboard() {
 // Отправка фото галереи
 async function sendPhotos(chatId, key) {
   const photos = PHOTOS[key];
-  if (!photos) return;
+  if (!photos || photos.length === 0) return;
+  if (photos.length === 1) {
+    try { await bot.sendPhoto(chatId, photos[0]); } catch {}
+    return;
+  }
   try {
     await bot.sendMediaGroup(chatId, photos.map(url => ({ type: "photo", media: url })));
   } catch {
