@@ -27,7 +27,9 @@ const PHOTOS = {
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/fasad-magazin.jpg",
   ],
   здания: [
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-pyaterochka.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-kombinirovannyy.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-angar.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-vitrazh.jpg",
   ],
   заборы: [],
 };
