@@ -1,10 +1,15 @@
 const TelegramBot = require("node-telegram-bot-api");
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
-// Логотип компании (хранится в этом же репозитории на GitHub)
-const LOGO_URL = "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/%D0%BB%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF.jpg";
+function log(...args) {
+  console.log(new Date().toISOString(), ...args);
+}
 
-// Фотографии по разделам
+// ===== Логотип компании =====
+const LOGO_URL =
+  "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/%D0%BB%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF.jpg";
+
+// ===== Фотографии по разделам =====
 const PHOTOS = {
   сварочные: [
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/svarka-lestnica.jpg",
@@ -16,14 +21,18 @@ const PHOTOS = {
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/2%20(2).jpg",
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/2dtggvkn92wbznsxexxpvnuw356jz3mk.jpg",
   ],
-  фасады: [],
+  фасады: [
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/fasad-lukoil.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/fasad-montaj-paneley.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/fasad-magazin.jpg",
+  ],
   здания: [
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-pyaterochka.jpg",
   ],
   заборы: [],
 };
 
-// Ответы по разделам
+// ===== Текстовые описания услуг =====
 const ANSWERS = {
   сварочные: `🔧 *Сварочные работы — Юг Мастер*
 
@@ -120,10 +129,9 @@ const ANSWERS = {
 ✅ Выезд замерщика бесплатно`,
 };
 
-// Состояния пользователей для сбора заявки
+// ===== Состояния пользователей для сбора заявки =====
 const userState = {};
 
-// Главное меню
 function mainKeyboard() {
   return {
     keyboard: [
@@ -136,30 +144,75 @@ function mainKeyboard() {
   };
 }
 
-// Отправка фото галереи
+// Отправка фото-галереи раздела с подробным логированием каждого шага
 async function sendPhotos(chatId, key) {
   const photos = PHOTOS[key];
-  if (!photos || photos.length === 0) return;
-  if (photos.length === 1) {
-    try { await bot.sendPhoto(chatId, photos[0]); } catch {}
+  log(`sendPhotos called for key="${key}", chatId=${chatId}, photos.length=${photos ? photos.length : "undefined"}`);
+
+  if (!photos || photos.length === 0) {
+    log(`No photos configured for "${key}", skipping.`);
     return;
   }
+
+  if (photos.length === 1) {
+    try {
+      log(`Sending single photo: ${photos[0]}`);
+      await bot.sendPhoto(chatId, photos[0]);
+      log(`Single photo sent OK for "${key}"`);
+    } catch (err) {
+      log(`ERROR sending single photo for "${key}":`, err.message);
+    }
+    return;
+  }
+
   try {
-    await bot.sendMediaGroup(chatId, photos.map(url => ({ type: "photo", media: url })));
-  } catch {
+    log(`Attempting sendMediaGroup for "${key}" with URLs:`, photos);
+    await bot.sendMediaGroup(
+      chatId,
+      photos.map((url) => ({ type: "photo", media: url }))
+    );
+    log(`sendMediaGroup OK for "${key}"`);
+  } catch (err) {
+    log(`ERROR in sendMediaGroup for "${key}":`, err.message);
+    log(`Falling back to sending photos one by one for "${key}"`);
     for (const url of photos) {
-      try { await bot.sendPhoto(chatId, url); } catch {}
+      try {
+        await bot.sendPhoto(chatId, url);
+        log(`Fallback sendPhoto OK: ${url}`);
+      } catch (err2) {
+        log(`Fallback sendPhoto FAILED for ${url}:`, err2.message);
+      }
     }
   }
 }
 
-// Обработка сообщений
+function showLeadForm(chatId) {
+  userState[chatId] = { step: "name" };
+  return bot.sendMessage(chatId, `📋 Оставим заявку за 1 минуту!\n\nКак вас зовут?`, {
+    parse_mode: "Markdown",
+    reply_markup: { remove_keyboard: true },
+  });
+}
+
+// ===== Определяем раздел по тексту кнопки =====
+function detectSection(text) {
+  const t = text.toLowerCase();
+  if (t.includes("сварочн")) return "сварочные";
+  if (t.includes("бетон")) return "бетонные";
+  if (t.includes("фасад")) return "фасады";
+  if (t.includes("строительство")) return "здания";
+  if (t.includes("забор") || t.includes("навес") || t.includes("ворот")) return "заборы";
+  return null;
+}
+
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = (msg.text || "").trim();
+  log(`Incoming message from ${chatId}: "${text}"`);
+
   const state = userState[chatId] || {};
 
-  // --- Сбор заявки (многошаговый диалог) ---
+  // --- Сбор заявки: многошаговый диалог ---
   if (state.step === "name") {
     userState[chatId] = { step: "phone", name: text };
     await bot.sendMessage(chatId, `Отлично, *${text}*! 👍\n\nТеперь напишите ваш номер телефона:`, {
@@ -189,12 +242,19 @@ bot.on("message", async (msg) => {
   if (state.step === "type") {
     const { name, phone } = state;
     userState[chatId] = {};
+    log(`New lead: name="${name}", phone="${phone}", type="${text}"`);
 
-    // Уведомление менеджеру
     const managerChatId = process.env.MANAGER_CHAT_ID;
-    const leadText = `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот @UgMaster134bot_`;
     if (managerChatId) {
-      try { await bot.sendMessage(managerChatId, leadText, { parse_mode: "Markdown" }); } catch {}
+      try {
+        await bot.sendMessage(
+          managerChatId,
+          `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
+          { parse_mode: "Markdown" }
+        );
+      } catch (err) {
+        log("Failed to notify manager:", err.message);
+      }
     }
 
     await bot.sendMessage(
@@ -215,43 +275,14 @@ bot.on("message", async (msg) => {
         parse_mode: "Markdown",
         reply_markup: mainKeyboard(),
       });
-    } catch {
+    } catch (err) {
+      log("Logo send failed, fallback to text:", err.message);
       await bot.sendMessage(
         chatId,
         `👋 Здравствуйте! Я консультант компании *Юг Мастер* — строительство в Волгограде.\n\n🏗️ Более 13 лет на рынке\n📍 г. Волгоград, ул. Радомская 27\n\nВыберите интересующую услугу:`,
         { parse_mode: "Markdown", reply_markup: mainKeyboard() }
       );
     }
-    return;
-  }
-
-  if (text.includes("Сварочные")) {
-    await sendPhotos(chatId, "сварочные");
-    await bot.sendMessage(chatId, ANSWERS.сварочные, { parse_mode: "Markdown", reply_markup: mainKeyboard() });
-    return;
-  }
-
-  if (text.includes("Бетонные")) {
-    await sendPhotos(chatId, "бетонные");
-    await bot.sendMessage(chatId, ANSWERS.бетонные, { parse_mode: "Markdown", reply_markup: mainKeyboard() });
-    return;
-  }
-
-  if (text.includes("Фасад")) {
-    await sendPhotos(chatId, "фасады");
-    await bot.sendMessage(chatId, ANSWERS.фасады, { parse_mode: "Markdown", reply_markup: mainKeyboard() });
-    return;
-  }
-
-  if (text.includes("Строительство")) {
-    await sendPhotos(chatId, "здания");
-    await bot.sendMessage(chatId, ANSWERS.здания, { parse_mode: "Markdown", reply_markup: mainKeyboard() });
-    return;
-  }
-
-  if (text.includes("Забор") || text.includes("навес") || text.includes("ворот")) {
-    await sendPhotos(chatId, "заборы");
-    await bot.sendMessage(chatId, ANSWERS.заборы, { parse_mode: "Markdown", reply_markup: mainKeyboard() });
     return;
   }
 
@@ -265,16 +296,21 @@ bot.on("message", async (msg) => {
   }
 
   if (text.includes("заявку") || text.includes("Заявку")) {
-    userState[chatId] = { step: "name" };
-    await bot.sendMessage(
-      chatId,
-      `📋 Оставим заявку за 1 минуту!\n\nКак вас зовут?`,
-      { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
-    );
+    await showLeadForm(chatId);
     return;
   }
 
-  // Если пользователь отправил фото без узнаваемого текста
+  const section = detectSection(text);
+  if (section) {
+    log(`Detected section "${section}" from text "${text}"`);
+    await sendPhotos(chatId, section);
+    await bot.sendMessage(chatId, ANSWERS[section], {
+      parse_mode: "Markdown",
+      reply_markup: mainKeyboard(),
+    });
+    return;
+  }
+
   if (msg.photo && !text) {
     await bot.sendMessage(
       chatId,
@@ -284,7 +320,6 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // Любое другое сообщение
   await bot.sendMessage(
     chatId,
     `Выберите интересующую услугу в меню ниже или позвоните нам: *+7 968 660-09-99*`,
@@ -292,4 +327,8 @@ bot.on("message", async (msg) => {
   );
 });
 
-console.log("🤖 Юг Мастер бот запущен (без AI)!");
+bot.on("polling_error", (err) => {
+  log("POLLING ERROR:", err.message);
+});
+
+log("🤖 Юг Мастер бот запущен (v2, с подробным логированием)!");
