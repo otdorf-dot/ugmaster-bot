@@ -28,8 +28,8 @@ const PHOTOS = {
   ],
   здания: [
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-kombinirovannyy.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-basseyn-besedka.jpg",
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-angar.jpg",
-    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-vitrazh.jpg",
   ],
   заборы: [],
 };
