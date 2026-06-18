@@ -32,7 +32,11 @@ const PHOTOS = {
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-angar.jpg",
     "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zdaniya-dom-basseyn.jpg",
   ],
-  заборы: [],
+  заборы: [
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zabor-vorota-kirpich.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/naves-terrasa.jpg",
+    "https://raw.githubusercontent.com/otdorf-dot/ugmaster-bot/main/zabor-shtaketnik.jpg",
+  ],
 };
 
 // ===== Текстовые описания услуг =====
