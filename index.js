@@ -1,8 +1,39 @@
 const TelegramBot = require("node-telegram-bot-api");
+const nodemailer = require("nodemailer");
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
 function log(...args) {
   console.log(new Date().toISOString(), ...args);
+}
+
+// ===== Настройка отправки email через Mail.ru SMTP =====
+const mailTransporter = nodemailer.createTransport({
+  host: "smtp.mail.ru",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_USER, // ot.do@mail.ru
+    pass: process.env.MAIL_PASS, // пароль для внешних приложений
+  },
+});
+
+async function sendLeadEmail({ name, phone, type }) {
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
+    log("MAIL_USER/MAIL_PASS не настроены, письмо не отправлено.");
+    return;
+  }
+  try {
+    await mailTransporter.sendMail({
+      from: `"Юг Мастер бот" <${process.env.MAIL_USER}>`,
+      to: "ot.do@mail.ru",
+      subject: "Заявка из телеги",
+      text: `Заявка из телеги\n\nИмя: ${name}\nТелефон: ${phone}\nТип работ: ${type}`,
+      html: `<p><b>Заявка из телеги</b></p><p>Имя: ${name}<br>Телефон: ${phone}<br>Тип работ: ${type}</p>`,
+    });
+    log(`Email с заявкой отправлен: ${name}, ${phone}, ${type}`);
+  } catch (err) {
+    log("ОШИБКА отправки email:", err.message);
+  }
 }
 
 // ===== Логотип компании =====
@@ -250,6 +281,9 @@ bot.on("message", async (msg) => {
     const { name, phone } = state;
     userState[chatId] = {};
     log(`New lead: name="${name}", phone="${phone}", type="${text}"`);
+
+    // Отправка заявки на email
+    await sendLeadEmail({ name, phone, type: text });
 
     const managerChatId = process.env.MANAGER_CHAT_ID;
     if (managerChatId) {
