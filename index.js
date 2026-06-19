@@ -11,9 +11,12 @@ const mailTransporter = nodemailer.createTransport({
   host: "smtp.yandex.ru",
   port: 465,
   secure: true,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   auth: {
-    user: process.env.MAIL_USER, // ваш_логин@yandex.ru
-    pass: process.env.MAIL_PASS, // пароль приложения из Яндекс ID
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
   },
 });
 
@@ -282,27 +285,25 @@ bot.on("message", async (msg) => {
     userState[chatId] = {};
     log(`New lead: name="${name}", phone="${phone}", type="${text}"`);
 
-    // Отправка заявки на email
-    await sendLeadEmail({ name, phone, type: text });
-
-    const managerChatId = process.env.MANAGER_CHAT_ID;
-    if (managerChatId) {
-      try {
-        await bot.sendMessage(
-          managerChatId,
-          `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
-          { parse_mode: "Markdown" }
-        );
-      } catch (err) {
-        log("Failed to notify manager:", err.message);
-      }
-    }
-
+    // Отправляем ответ клиенту СРАЗУ, не ждём email
     await bot.sendMessage(
       chatId,
       `✅ *Заявка принята!*\n\n${name}, наш менеджер свяжется с вами по номеру *${phone}* в течение 15 минут.\n\nЕсли срочно — звоните сами: *+7 968 660-09-99*`,
       { parse_mode: "Markdown", reply_markup: mainKeyboard() }
     );
+
+    // Email и уведомление менеджеру — в фоне, не блокируем
+    sendLeadEmail({ name, phone, type: text }).catch(err => log("Email error:", err.message));
+
+    const managerChatId = process.env.MANAGER_CHAT_ID;
+    if (managerChatId) {
+      bot.sendMessage(
+        managerChatId,
+        `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
+        { parse_mode: "Markdown" }
+      ).catch(err => log("Manager notify error:", err.message));
+    }
+
     return;
   }
 
