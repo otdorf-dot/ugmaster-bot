@@ -25,15 +25,16 @@ async function sendLeadEmail({ name, phone, type }) {
     log("MAIL_USER/MAIL_PASS не настроены, письмо не отправлено.");
     return;
   }
+  const contact = phone ? `${name}, ${phone}` : name;
   try {
     await mailTransporter.sendMail({
       from: `"Юг Мастер бот" <${process.env.MAIL_USER}>`,
       to: "ot.do@mail.ru",
       subject: "Заявка из телеги",
-      text: `Заявка из телеги\n\nИмя: ${name}\nТелефон: ${phone}\nТип работ: ${type}`,
-      html: `<p><b>Заявка из телеги</b></p><p>Имя: ${name}<br>Телефон: ${phone}<br>Тип работ: ${type}</p>`,
+      text: `Заявка из телеги\n\nКонтакт: ${contact}\nТип работ: ${type}`,
+      html: `<p><b>Заявка из телеги</b></p><p>Контакт: ${contact}<br>Тип работ: ${type}</p>`,
     });
-    log(`Email с заявкой отправлен: ${name}, ${phone}, ${type}`);
+    log(`Email с заявкой отправлен: ${contact}, ${type}`);
   } catch (err) {
     log("ОШИБКА отправки email:", err.message);
   }
@@ -229,11 +230,12 @@ async function sendPhotos(chatId, key) {
 }
 
 function showLeadForm(chatId) {
-  userState[chatId] = { step: "name" };
-  return bot.sendMessage(chatId, `📋 Оставим заявку за 1 минуту!\n\nКак вас зовут?`, {
-    parse_mode: "Markdown",
-    reply_markup: { remove_keyboard: true },
-  });
+  userState[chatId] = { step: "contact" };
+  return bot.sendMessage(
+    chatId,
+    `📋 Оставим заявку за *1 минуту*!\n\nНапишите своё *имя и номер телефона* в одном сообщении:\n\n_Пример: Александр +79001234567_`,
+    { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
+  );
 }
 
 // ===== Определяем раздел по тексту кнопки =====
@@ -254,19 +256,11 @@ bot.on("message", async (msg) => {
 
   const state = userState[chatId] || {};
 
-  // --- Сбор заявки: многошаговый диалог ---
-  if (state.step === "name") {
-    userState[chatId] = { step: "phone", name: text };
-    await bot.sendMessage(chatId, `Отлично, *${text}*! 👍\n\nТеперь напишите ваш номер телефона:`, {
-      parse_mode: "Markdown",
-      reply_markup: { remove_keyboard: true },
-    });
-    return;
-  }
-
-  if (state.step === "phone") {
-    userState[chatId] = { step: "type", name: state.name, phone: text };
-    await bot.sendMessage(chatId, `📱 Номер записан!\n\nЧто нужно сделать? Опишите кратко тип работ:`, {
+  // --- Сбор заявки: двухшаговый диалог ---
+  if (state.step === "contact") {
+    // Принимаем имя и телефон одним сообщением
+    userState[chatId] = { step: "type", contact: text };
+    await bot.sendMessage(chatId, `👍 Отлично!\n\nЧто нужно сделать? Выберите или опишите тип работ:`, {
       parse_mode: "Markdown",
       reply_markup: {
         keyboard: [
@@ -282,25 +276,25 @@ bot.on("message", async (msg) => {
   }
 
   if (state.step === "type") {
-    const { name, phone } = state;
+    const { contact } = state;
     userState[chatId] = {};
-    log(`New lead: name="${name}", phone="${phone}", type="${text}"`);
+    log(`New lead: contact="${contact}", type="${text}"`);
 
     // Отправляем ответ клиенту СРАЗУ, не ждём email
     await bot.sendMessage(
       chatId,
-      `✅ *Заявка принята!*\n\n${name}, наш менеджер свяжется с вами по номеру *${phone}* в течение 15 минут.\n\nЕсли срочно — звоните сами: *+7 968 660-09-99*`,
+      `✅ *Заявка принята!*\n\nНаш менеджер свяжется с вами в течение 15 минут.\n\nЕсли срочно — звоните сами: *+7 968 660-09-99*`,
       { parse_mode: "Markdown", reply_markup: mainKeyboard() }
     );
 
-    // Email и уведомление менеджеру — в фоне, не блокируем
-    sendLeadEmail({ name, phone, type: text }).catch(err => log("Email error:", err.message));
+    // Email в фоне
+    sendLeadEmail({ name: contact, phone: "", type: text }).catch(err => log("Email error:", err.message));
 
     const managerChatId = process.env.MANAGER_CHAT_ID;
     if (managerChatId) {
       bot.sendMessage(
         managerChatId,
-        `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
+        `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n📝 Контакт: ${contact}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
         { parse_mode: "Markdown" }
       ).catch(err => log("Manager notify error:", err.message));
     }
