@@ -233,7 +233,7 @@ function showLeadForm(chatId) {
   userState[chatId] = { step: "contact" };
   return bot.sendMessage(
     chatId,
-    `📋 Оставим заявку за *1 минуту*!\n\nНапишите своё *имя и номер телефона* в одном сообщении:\n\n_Пример: Александр +79001234567_`,
+    `📋 Оставим заявку за *1 минуту*!\n\nКак вас зовут?`,
     { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
   );
 }
@@ -256,49 +256,72 @@ bot.on("message", async (msg) => {
 
   const state = userState[chatId] || {};
 
-  // --- Сбор заявки: двухшаговый диалог ---
+  // --- Сбор заявки ---
   if (state.step === "contact") {
-    // Принимаем имя и телефон одним сообщением
-    userState[chatId] = { step: "type", contact: text };
-    await bot.sendMessage(chatId, `👍 Отлично!\n\nЧто нужно сделать? Выберите или опишите тип работ:`, {
-      parse_mode: "Markdown",
-      reply_markup: {
-        keyboard: [
-          ["Сварочные работы", "Бетонные работы"],
-          ["Фасад", "Строительство здания"],
-          ["Забор/ворота/навес"],
-        ],
-        resize_keyboard: true,
-        one_time_keyboard: true,
-      },
-    });
+    userState[chatId] = { step: "phone", name: text };
+    await bot.sendMessage(
+      chatId,
+      `Отлично, *${text}*! 👍\n\nТеперь введите номер телефона в формате:\n*+79001234567*`,
+      { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
+    );
+    return;
+  }
+
+  if (state.step === "phone") {
+    // Валидация: убираем пробелы/тире, проверяем формат +7XXXXXXXXXX
+    const cleaned = text.replace(/[\s\-\(\)]/g, "");
+    const phoneRegex = /^\+7\d{10}$/;
+    if (!phoneRegex.test(cleaned)) {
+      await bot.sendMessage(
+        chatId,
+        `❌ Номер введён неверно.\n\nВведите номер строго в формате:\n*+79001234567*\n\n_(11 цифр после +7)_`,
+        { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
+      );
+      return;
+    }
+    userState[chatId] = { step: "type", name: state.name, phone: cleaned };
+    await bot.sendMessage(
+      chatId,
+      `📱 Номер *${cleaned}* записан!\n\nЧто нужно сделать? Выберите или опишите тип работ:`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          keyboard: [
+            ["Сварочные работы", "Бетонные работы"],
+            ["Фасад", "Строительство здания"],
+            ["Забор/ворота/навес"],
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      }
+    );
     return;
   }
 
   if (state.step === "type") {
-    const { contact } = state;
+    const { name, phone } = state;
     userState[chatId] = {};
-    log(`New lead: contact="${contact}", type="${text}"`);
+    log(`New lead: name="${name}", phone="${phone}", type="${text}"`);
 
-    // Отправляем ответ клиенту СРАЗУ, не ждём email
+    // Отправляем ответ клиенту СРАЗУ
     await bot.sendMessage(
       chatId,
-      `✅ *Заявка принята!*\n\nНаш менеджер свяжется с вами в течение 15 минут.\n\nЕсли срочно — звоните сами: *+7 968 660-09-99*`,
+      `✅ *Заявка принята!*\n\n${name}, наш менеджер свяжется с вами по номеру *${phone}* в течение 15 минут.\n\nЕсли срочно — звоните сами: *+7 968 660-09-99*`,
       { parse_mode: "Markdown", reply_markup: mainKeyboard() }
     );
 
     // Email в фоне
-    sendLeadEmail({ name: contact, phone: "", type: text }).catch(err => log("Email error:", err.message));
+    sendLeadEmail({ name, phone, type: text }).catch(err => log("Email error:", err.message));
 
     const managerChatId = process.env.MANAGER_CHAT_ID;
     if (managerChatId) {
       bot.sendMessage(
         managerChatId,
-        `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n📝 Контакт: ${contact}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
+        `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
         { parse_mode: "Markdown" }
       ).catch(err => log("Manager notify error:", err.message));
     }
-
     return;
   }
 
