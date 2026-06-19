@@ -6,14 +6,14 @@ function log(...args) {
   console.log(new Date().toISOString(), ...args);
 }
 
-// ===== Настройка отправки email через Mail.ru SMTP =====
+// ===== Настройка отправки email через Yandex SMTP =====
 const mailTransporter = nodemailer.createTransport({
-  host: "smtp.mail.ru",
+  host: "smtp.yandex.ru",
   port: 465,
   secure: true,
   auth: {
-    user: process.env.MAIL_USER, // ot.do@mail.ru
-    pass: process.env.MAIL_PASS, // пароль для внешних приложений
+    user: process.env.MAIL_USER, // ваш_логин@yandex.ru
+    pass: process.env.MAIL_PASS, // пароль приложения из Яндекс ID
   },
 });
 
