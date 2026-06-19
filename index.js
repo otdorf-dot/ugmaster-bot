@@ -311,16 +311,19 @@ bot.on("message", async (msg) => {
       { parse_mode: "Markdown", reply_markup: mainKeyboard() }
     );
 
-    // Email в фоне
-    sendLeadEmail({ name, phone, type: text }).catch(err => log("Email error:", err.message));
-
+    // Уведомление владельцу в Telegram — основной канал получения заявок
     const managerChatId = process.env.MANAGER_CHAT_ID;
+    log(`MANAGER_CHAT_ID = "${managerChatId}"`);
     if (managerChatId) {
       bot.sendMessage(
         managerChatId,
         `🔔 *НОВАЯ ЗАЯВКА — Юг Мастер*\n\n👤 Имя: ${name}\n📞 Телефон: ${phone}\n🔧 Работы: ${text}\n\n_Источник: Telegram бот_`,
         { parse_mode: "Markdown" }
-      ).catch(err => log("Manager notify error:", err.message));
+      )
+        .then(() => log("Уведомление менеджеру отправлено успешно"))
+        .catch(err => log("ОШИБКА уведомления менеджера:", err.message));
+    } else {
+      log("MANAGER_CHAT_ID не настроен — уведомление не отправлено!");
     }
     return;
   }
