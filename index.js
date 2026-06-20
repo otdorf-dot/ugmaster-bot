@@ -233,7 +233,7 @@ function showLeadForm(chatId) {
   userState[chatId] = { step: "contact" };
   return bot.sendMessage(
     chatId,
-    `📋 Оставим заявку за *1 минуту*!\n\nКак вас зовут?`,
+    `📋 Оставим заявку за *1 минуту*!\n\nНапишите *имя и телефон* в одном сообщении, по образцу:\n\n*Иван +7 900 123 45 67*`,
     { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
   );
 }
@@ -258,31 +258,26 @@ bot.on("message", async (msg) => {
 
   // --- Сбор заявки ---
   if (state.step === "contact") {
-    userState[chatId] = { step: "phone", name: text };
-    await bot.sendMessage(
-      chatId,
-      `Отлично, *${text}*! 👍\n\nТеперь введите номер телефона по образцу:\n\n*+7 900 123 45 67*`,
-      { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
-    );
-    return;
-  }
+    // Извлекаем номер телефона из текста (ищем +7/8 и 10 цифр после него)
+    const phoneMatch = text.match(/(\+7|8|7)[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d[\s\-\(\)]*\d/);
 
-  if (state.step === "phone") {
-    // Валидация: убираем пробелы/тире/скобки, проверяем формат +7XXXXXXXXXX
-    const cleaned = text.replace(/[\s\-\(\)]/g, "");
-    const phoneRegex = /^\+7\d{10}$/;
-    if (!phoneRegex.test(cleaned)) {
+    if (!phoneMatch) {
       await bot.sendMessage(
         chatId,
-        `❌ Номер введён неверно.\n\nВведите номер по образцу:\n\n*+7 900 123 45 67*\n\n_(11 цифр после +7, можно с пробелами)_`,
+        `❌ Не нашёл номер телефона в сообщении.\n\nНапишите имя и телефон вместе, по образцу:\n\n*Иван +7 900 123 45 67*`,
         { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
       );
       return;
     }
-    userState[chatId] = { step: "type", name: state.name, phone: cleaned };
+
+    const digitsOnly = phoneMatch[0].replace(/[\s\-\(\)]/g, "").replace(/^(\+7|8|7)/, "");
+    const phone = "+7" + digitsOnly;
+    const name = text.slice(0, phoneMatch.index).trim() || "Клиент";
+
+    userState[chatId] = { step: "type", name, phone };
     await bot.sendMessage(
       chatId,
-      `📱 Номер *${cleaned}* записан!\n\nЧто нужно сделать? Выберите или опишите тип работ:`,
+      `👍 *${name}*, номер *${phone}* записан!\n\nЧто нужно сделать? Выберите или опишите тип работ:`,
       {
         parse_mode: "Markdown",
         reply_markup: {
