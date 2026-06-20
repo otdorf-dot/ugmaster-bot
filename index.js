@@ -261,20 +261,20 @@ bot.on("message", async (msg) => {
     userState[chatId] = { step: "phone", name: text };
     await bot.sendMessage(
       chatId,
-      `Отлично, *${text}*! 👍\n\nТеперь введите номер телефона в формате:\n*+79001234567*`,
+      `Отлично, *${text}*! 👍\n\nТеперь введите номер телефона по образцу:\n\n*+7 900 123 45 67*`,
       { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
     );
     return;
   }
 
   if (state.step === "phone") {
-    // Валидация: убираем пробелы/тире, проверяем формат +7XXXXXXXXXX
+    // Валидация: убираем пробелы/тире/скобки, проверяем формат +7XXXXXXXXXX
     const cleaned = text.replace(/[\s\-\(\)]/g, "");
     const phoneRegex = /^\+7\d{10}$/;
     if (!phoneRegex.test(cleaned)) {
       await bot.sendMessage(
         chatId,
-        `❌ Номер введён неверно.\n\nВведите номер строго в формате:\n*+79001234567*\n\n_(11 цифр после +7)_`,
+        `❌ Номер введён неверно.\n\nВведите номер по образцу:\n\n*+7 900 123 45 67*\n\n_(11 цифр после +7, можно с пробелами)_`,
         { parse_mode: "Markdown", reply_markup: { remove_keyboard: true } }
       );
       return;
